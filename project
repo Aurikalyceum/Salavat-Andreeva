@@ -1,0 +1,87 @@
+from flask import Flask, render_template, request
+import time
+import os
+
+app = Flask(__name__)
+texts = []
+names = []
+authors = []
+
+@app.route('/')  #Создание главной страницы
+def books():
+    return render_template('main_page_books.html')
+
+
+@app.route('/review', methods=['POST', 'GET'])  #Создание страницы, на которой сожно написать рецензию
+def review():
+    if request.method == 'GET':
+        return render_template('review.html')
+    elif request.method == 'POST':  #Сохранение рецензии
+        name = request.form['name_book']
+        author = request.form['author_book']
+        text = request.form['text_book']
+        num = int(time.time())  #Создание уникального номера (на случай если есть две рецензии на одну и ту же книгу)
+        name_file = 'reviews/' + (author + '_' + name + '_' + str(num) + '.txt')
+        f = open(name_file, 'w')
+        f.write(text)
+        f.close()
+        return render_template('review_save.html')
+
+
+@app.route('/archive')  #Создание архива — места, где можно перечитать свои рецензии
+def archive():
+    reviews = []
+    for root, dirs, files in os.walk("reviews"):
+        reviews = files
+    if reviews is False:
+        return render_template('archive.html', revs=['У вас ещё нет ни одной рецензии'], names='', authors='', leng=1)
+    else:  #Передача информации в шаблон
+        for text in reviews:
+            file = 'reviews/' + text
+            f = open(file, 'r')
+            f = f.read()
+            text = text.split('_')
+            if text[1] not in names:
+                names.append(text[1])
+            if text[0] not in authors:
+                authors.append(text[0])
+            if f not in texts:
+                texts.append(f)
+            n = len(names)
+        return render_template('archive.html', revs=texts, names=names, authors=authors, leng=n)
+
+
+@app.route('/quiz')  #Страница с викторинами
+def quiz():
+    quizzes = ['http://127.0.0.1:8080/quiz_1']
+    return render_template('quiz.html', quizzes=quizzes)
+
+
+@app.route('/quiz_1', methods=['POST', 'GET'])  #Первая викторина
+def quiz_1():
+    if request.method == 'GET':
+        return render_template('quiz/quiz_1.html')
+    elif request.method == 'POST':
+        count = 0
+        if request.form['a'] == 'a1':
+            count += 1
+        if request.form['b'] == 'b2':
+            count += 1
+        if request.form['c'] == 'c1':
+            count += 1
+        if request.form['d'] == 'd2':
+            count += 1
+        if request.form['e'] == 'e1':
+            count += 1
+        if request.form['f'] == 'f3':
+            count += 1
+        if count <= 2:
+            text = 'Ваш результат — ' + str(count) + ' из 6. Вы уже подзабыли Булгакова, освежите память!'
+        elif count > 2 and count <= 4:
+            text = 'Ваш результат — ' + str(count) + ' из 6. Вы хорошо помните Булгакова и его творчество. Так держать!'
+        elif count > 4:
+            text = 'Ого, да вы книголюб! Ваш результат — ' + str(count) + ' из 6.'
+        return render_template('quiz/results.html', text=text)
+
+if __name__ == '__main__':
+    app.run(debug=True, port=8080, host='127.0.0.1')
